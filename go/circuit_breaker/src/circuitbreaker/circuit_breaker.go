@@ -101,7 +101,7 @@ func (this *CircuitBreaker) startNewState(state CircuitBreakerState, stopChan, s
 	case Closed:
 		go this.closedStateFn.Start(stopChan, stoppedChan, this.statsChan, this.stateChan)
 	case Open:
-		go this.openStateFn.Start(stopChan, stoppedChan, this.stateChan)
+		go this.openStateFn.Start(stopChan, stoppedChan, this.statsChan, this.stateChan)
 	case HalfOpen:
 		go this.halfOpenStateFn.Start(stopChan, stoppedChan, this.statsChan, this.stateChan)
 	}
