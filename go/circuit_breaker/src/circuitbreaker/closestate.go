@@ -27,6 +27,8 @@ func (this *ClosedStateMachine) Start(stopChan <-chan struct{}, stoppedChan chan
 			total := this.stats[0] + this.stats[1]
 			if total > 0 && float32(this.stats[1])/float32(total) >= this.breakThreshold {
 				stateChan <- Open
+				// stop the ticker to avoid the new stats window to begin so that another state signal is sent.
+				ticker.Stop()
 			} else {
 				// clear the statistics
 				this.stats[0] = 0

@@ -4,6 +4,6 @@ export GOPATH="$CURDIR"
 
 gofmt -w ./src
 
-go install main
+go install -race main
 
 export GOPATH="$OLDGOPATH"

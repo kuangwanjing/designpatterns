@@ -4,8 +4,8 @@ import (
 	cb "circuitbreaker"
 	"fmt"
 	"sync"
-	//"httpclient"
 	"time"
+	//"httpclient"
 )
 
 func main() {
@@ -20,7 +20,12 @@ func main() {
 		fmt.Println(err)
 	*/
 
-	breaker := new(cb.CircuitBreaker)
+	//testAlwaysClosed()
+	testCloseToOpenToHalfToClose()
+}
+
+func testAlwaysClosed() {
+	breaker := cb.NewBreaker(500*time.Millisecond, 0.3, time.Second, 100)
 	breaker.Run()
 
 	var wg sync.WaitGroup
@@ -40,6 +45,38 @@ func main() {
 
 	time.Sleep(time.Second)
 	fmt.Println(breaker.IsAvailable())
+}
 
-	fmt.Println(breaker)
+func testCloseToOpenToHalfToClose() {
+	breaker := cb.NewBreaker(500*time.Millisecond, 0.3, 9*time.Second, 5)
+	breaker.Run()
+
+	var wg sync.WaitGroup
+	wg.Add(1000)
+
+	for i := 0; i < 1000; i++ {
+		go func(index int) {
+			makeRequest := breaker.IsAvailable()
+			if makeRequest {
+				if index < 700 {
+					breaker.MakeSuccess()
+				} else {
+					breaker.MakeFailure()
+				}
+			}
+			wg.Done()
+		}(i)
+	}
+
+	wg.Wait()
+
+	time.Sleep(time.Second)
+	fmt.Println(breaker.IsAvailable())
+	time.Sleep(10 * time.Second)
+	for i := 0; i < 10; i++ {
+		fmt.Println(breaker.IsAvailable())
+	}
+	breaker.MakeSuccess()
+	time.Sleep(time.Second)
+	fmt.Println(breaker.IsAvailable())
 }

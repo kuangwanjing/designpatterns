@@ -22,22 +22,24 @@ type CircuitBreaker struct {
 	requestedChan   chan bool
 	statsChan       chan bool
 	stateChan       chan CircuitBreakerState
+	tryRate         int
 }
 
-func (this *CircuitBreaker) init() {
-	this.state = Closed
-	this.closedStateFn = &ClosedStateMachine{time.Second, 0.3, []int{0, 0}}
-	this.openStateFn = &OpenStateMachine{500 * time.Millisecond}
-	this.halfOpenStateFn = &HalfOpenStateMachine{}
-	this.requestChan = make(chan bool, 10)
-	this.requestedChan = make(chan bool, 10)
-	this.statsChan = make(chan bool)
-	this.stateChan = make(chan CircuitBreakerState)
+func NewBreaker(statsWindow time.Duration, openThreshold float32, openWindow time.Duration, tryRate int) *CircuitBreaker {
+	breaker := new(CircuitBreaker)
+	breaker.state = Closed
+	breaker.closedStateFn = &ClosedStateMachine{statsWindow, openThreshold, []int{0, 0}}
+	breaker.openStateFn = &OpenStateMachine{openWindow}
+	breaker.halfOpenStateFn = &HalfOpenStateMachine{}
+	breaker.requestChan = make(chan bool, 5)
+	breaker.requestedChan = make(chan bool, 5)
+	breaker.statsChan = make(chan bool, 5)
+	breaker.stateChan = make(chan CircuitBreakerState)
+	breaker.tryRate = tryRate
+	return breaker
 }
 
 func (this *CircuitBreaker) Run() {
-
-	this.init()
 
 	go func() {
 		// first run the closed state machine
@@ -54,6 +56,7 @@ func (this *CircuitBreaker) Run() {
 				stopChan = make(chan struct{})
 				stoppedChan = make(chan struct{})
 				this.startNewState(newState, stopChan, stoppedChan)
+				this.state = newState
 			}
 		}
 	}()
@@ -77,8 +80,7 @@ func (this *CircuitBreaker) check() bool {
 	if this.state == Closed {
 		return true
 	} else if this.state == HalfOpen {
-		// the chance is 1 in 10
-		r := rand.Intn(10)
+		r := rand.Intn(this.tryRate)
 		if r == 0 {
 			return true
 		}

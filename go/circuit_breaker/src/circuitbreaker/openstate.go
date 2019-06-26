@@ -21,6 +21,8 @@ func (this *OpenStateMachine) Start(stopChan <-chan struct{}, stoppedChan chan s
 		select {
 		case <-ticker.C:
 			stateChan <- HalfOpen
+			// stop the ticker to avoid the new stats window to begin so that another state signal is sent.
+			ticker.Stop()
 		case <-stopChan: // this is a stop signal for this routine
 			return
 		}
